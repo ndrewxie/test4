@@ -11,16 +11,6 @@
             <button id="runprox" onclick="run_prox()">Re-write</button>
         </div>
         <script>
-            let password = '2457'; // not secure, but not meant to be
-            if (localStorage.getItem('devpass') != password) {
-                document.getElementById('runprox').disabled = true;
-                document.getElementById('runprox').innerHTML = 'Please codespace.mooink.repl.co instead';
-                let trialed_pass = prompt('This is the dev version. Please use the following link instead: \ncodespace.mooink.repl.co\nIf you\'re interested in accessing sploop, just load up the URL above, and in the textbox in the center, type the following in:\nhttps://sploop.io\nand then press the re-write button. The https:// is important, DO NOT omit it\nIf you have a dev password and want to use this version (you shouldn\'t use it tho), enter it here: ');
-                localStorage.setItem('devpass', trialed_pass);
-                if (trialed_pass == password) {
-                    location.reload();
-                }
-            }
             function run_prox() {
                 const WEBSITE_URL = 'https://test4.ndrewxie.repl.co';
                 let url = document.getElementById('proxurl').value;
