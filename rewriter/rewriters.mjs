@@ -12,7 +12,7 @@ function strcomp_nows_nocap(a, b) {
 
 let rewrite_invariants = ['data:', 'javascript:'];
 function encode_uri_base64(input) {
-    return encodeURIComponent(btoa(input));
+    return encodeURIComponent((Buffer.from(input)).toString('base64'));
 }
 function rewrite_url(input_url, base_url) {
     let lowered = ('' + input_url).toLowerCase();
