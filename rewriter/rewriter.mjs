@@ -2,10 +2,13 @@ import {Worker} from 'worker_threads';
 
 let REWRITER_LINK = './rewriter/rewrite_worker.mjs';
 let NUM_WORKERS = 5;
+let MAX_WORKER_TIME = 100000;
 
 let rewriter_pool = [];
 function new_rewriter() {
-    let rewriter = new Worker(REWRITER_LINK);
+    let rewriter = new Worker(REWRITER_LINK, {
+        synchronizedStdio: false
+    });
     let curr_element = {
         rewriter: rewriter,
         user: undefined,
@@ -22,6 +25,9 @@ function new_rewriter() {
                 curr_element.user = undefined;
                 curr_element.task_start = undefined;
                 process_queue();
+            }
+            else if (message[0] == 'log') {
+                console.log('(' + curr_element.user.worker_id + '): ' + message[1]);
             }
         }
         else {
@@ -102,12 +108,13 @@ function process_queue() {
     for (let j = 0; j < rewriter_pool.length; j++) {
         let rewriter = rewriter_pool[j];
         let curr_time = Date.now();
-        if (rewriter.task_start && (curr_time - rewriter.task_start > 15000)) {
+        if (rewriter.task_start && (curr_time - rewriter.task_start > MAX_WORKER_TIME)) {
+            console.log("Killing worker " + j + " because of time");
             if (rewriter.user && rewriter.user.on_error) {
                 rewriter.user.on_error();
             }
             rewriter.user.remove_worker();
-            rewriter.rewriter.terminate().then(() => console.log("Worker killed after error"));
+            rewriter.rewriter.terminate().then(() => console.log("Worker killed because of time"));
             rewriter_pool[j] = new_rewriter();
         }
     }

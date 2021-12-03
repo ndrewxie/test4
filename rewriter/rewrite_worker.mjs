@@ -2,6 +2,15 @@ import {Buffer} from 'buffer';
 import {parentPort} from 'worker_threads';
 import * as rewriters from './rewriters.mjs';
 
+function console_log(input) {
+    if (parentPort) {
+        parentPort.postMessage(['log', input]);
+    }
+    else {
+        console.log(input);
+    }
+}
+
 let rewriter = undefined;
 let type = undefined;
 parentPort.on('message', message => {

@@ -16,6 +16,9 @@ export const get_hook = base_url => `<script>
         if (lowered.includes('imasdk.googleapis') || lowered.includes('googlesyndication')) {
             return input_url;
         }
+        if (encodeURIComponent(btoa(input_url)).includes('mFtcDtzPWUyMDc0ODk4ZTVmYmYwMThkZTIwMjU1MjUyNmZlMWZlZGFmYWMxMjY')) {
+            alert(input_url);
+        }
         return '${urls.WEBSITE_URL}' + '/requestdata?q=' + encodeURIComponent(btoa(input_url)) + '&baseurl=' + encodeURIComponent(btoa('${base_url}'));
     }
     window.XMLHttpRequest.prototype.old_open = window.XMLHttpRequest.prototype.open;
@@ -30,10 +33,12 @@ export const get_hook = base_url => `<script>
     let proxy_list = [
         [window.Image, ['src']],
         [window.HTMLImageElement, ['src', 'href']],
+        [window.HTMLVideoElement, ['src']],
         [window.HTMLScriptElement, ['src']],
         [window.Image, ['src']],
         [window.HTMLLinkElement, ['href']],
-        [window.HTMLAnchorElement, ['href']]
+        [window.HTMLAnchorElement, ['href']],
+        [window.HTMLIFrameElement, ['src']]
     ];
     for (let j = 0; j < proxy_list.length; j++) {
         let target = proxy_list[j][0];
@@ -126,7 +131,7 @@ export const get_hook = base_url => `<script>
     /*
     window.onerror = function(message, url, lineNumber) {
         alert("ERROR: " + message);
-        return false;
+        return true;
     };
     */
 })();

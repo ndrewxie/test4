@@ -210,12 +210,30 @@ export class TextStream {
 }
 
 export class MutationList {
-    constructor() {
+    constructor(child_params=undefined) {
         this.index = 0;
         this.nodes = [];
         this.parent_stack = [];
+
+        if (typeof child_params == 'undefined') {
+            this.last_changes = new MutationList({
+                parent_stack: this.parent_stack
+            });
+        }
+        else {
+            this.parent_stack = child_params.parent_stack;
+        }
+    }
+    last_parent() {
+        if (this.parent_stack.length > 0) {
+            return this.parent_stack[this.parent_stack.length-1];
+        }
+        return undefined;
     }
     add_open(type, info) {
+        if (this.last_changes) {
+            this.last_changes.add_open(type, info);
+        }
         this.nodes.push({
             code: 'open', 
             type: type, 
@@ -225,6 +243,9 @@ export class MutationList {
         this.parent_stack.push(this.nodes[this.nodes.length-1]);
     }
     add_close(type, info) {
+        if (this.last_changes) {
+            this.last_changes.add_close(type, info);
+        }
         this.nodes.push({
             code: 'close', 
             type: type, 
@@ -232,12 +253,15 @@ export class MutationList {
         });
         let ps_len = this.parent_stack.length;
         if (ps_len > 0) {
-            if (this.parent_stack[ps_len - 1].type == type) {
+            if (string_eq_nocase(this.parent_stack[ps_len - 1].type, type)) {
                 this.parent_stack.pop();
             }
         }
     }
     add_insert(type, info) {
+        if (this.last_changes) {
+            this.last_changes.add_insert(type, info);
+        }
         this.nodes.push({
             code: 'insert', 
             type: type, 
@@ -262,21 +286,12 @@ export class MutationList {
     at() {
         return this.nodes[this.index];
     }
-    skip_children() {
-        throw new Error("Doesn't work");
-        if (this.has_next()) {
-            let target = this.index;
-            this.next();
-            let at = undefined;
-            while (typeof (at = this.at()) != 'undefined') {
-                if ((typeof at.parent != 'undefined') && (at.parent == target) && this.has_next()) {
-                    this.next();
-                }
-                else {
-                    break;
-                }
-            }
-        }
+    get_changes() {
+        let to_return = this.last_changes;
+        this.last_changes = new MutationList({
+            parent_stack: this.parent_stack
+        });
+        return to_return;
     }
 }
 

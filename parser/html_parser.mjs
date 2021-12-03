@@ -1,7 +1,18 @@
 import assert from 'assert';
 import {TextStream, MutationList, is_whitespace} from './utility.mjs';
 
-const CHILDLESS_ELEMENTS = ['script', 'style'];
+import {parentPort} from 'worker_threads';
+
+function console_log(input) {
+    if (parentPort) {
+        parentPort.postMessage(['log', input]);
+    }
+    else {
+        console.log(input);
+    }
+}
+
+const CDATA_TAGS = ['script'];
 const VOID_ELEMENTS = ['!doctype', 'area', 'base', 'br', 'col', 'command', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
 const ALLOWABLE_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789-_!';
 const BANNED_ATTR_WORD_VALUE_CHARS = '"\'=<>`';
@@ -100,9 +111,11 @@ export class Node {
                 acc += attribute[0];
             }
             else if (attribute.length == 2) {
+                /*
                 while (attribute[1].includes('"')) {
                     attribute[1] = attribute[1].replace('"', '&quot;');
                 }
+                */
                 acc += attribute[0] + '="' + attribute[1] + '"';
             }
             acc += ' ';
@@ -132,13 +145,11 @@ export class Node {
 export class HTMLParser {
     constructor(input) {
         this.input = new TextStream(input, true);
-        this.nodes = [];
+        this.nodes = new MutationList();
         this.acc = '';
     }
     write(input) {
         this.input.write(input);
-        //this.input.write(this.acc + input);
-        //this.acc = '';
     }
     end() {
         this.input.is_poisoned = false;
@@ -170,6 +181,18 @@ export class HTMLParser {
         }
         return this.input.restore_return(undefined);
     }
+    validate_tag_open(tag_name) {
+        if (!is_valid_tag(tag_name)) {
+            return false;
+        }
+        let last_parent = this.nodes.last_parent();
+        if (typeof last_parent != 'undefined') {
+            if (CDATA_TAGS.includes(last_parent.type.toLowerCase().trim())) {
+                return false;
+            }
+        }
+        return true;
+    }
     expect_tag_open() {
         let reader = this.input;
         reader.save();
@@ -181,7 +204,7 @@ export class HTMLParser {
         let tag_name = reader.expect_until_criterion(function(input) {
             return !ALLOWABLE_CHARS.includes(input.toLowerCase());
         });
-        if (!is_valid_tag(tag_name)) {
+        if (!this.validate_tag_open(tag_name)) {
             return reader.restore_return(undefined);
         }
         let to_return = new Node(tag_name);
@@ -259,31 +282,30 @@ export class HTMLParser {
         return this.input.restore_return(undefined);
     }
     parse() {
-        let new_nodes = new MutationList();
         let at = undefined;
         while (at = this.input.at()) {
-            let comment_expect = this.parse_comment(new_nodes);
+            let comment_expect = this.parse_comment();
             if (comment_expect == 'continue') {
                 continue;
             }
             else if (comment_expect == 'return') {
-                return new_nodes;
+                break;
             }
 
-            let tag_close_expect = this.parse_tag_close(new_nodes);
+            let tag_close_expect = this.parse_tag_close();
             if (tag_close_expect == 'continue') {
                 continue;
             }
             else if (tag_close_expect == 'return') {
-                return new_nodes;
+                break;
             }
 
-            let tag_open_expect = this.parse_tag_open(new_nodes);
+            let tag_open_expect = this.parse_tag_open();
             if (tag_open_expect == 'continue') {
                 continue;
             }
             else if (tag_open_expect == 'return') {
-                return new_nodes;
+                break;
             }
             
             this.acc += at;
@@ -291,7 +313,7 @@ export class HTMLParser {
                 this.input.next();
             }
         }
-        return new_nodes;
+        return this.nodes.get_changes();
     }
     parse_action(input) {
         if (input) {
@@ -306,46 +328,46 @@ export class HTMLParser {
             }
         }
     }
-    parse_comment(new_nodes) {
+    parse_comment() {
         let comment_expect = this.expect_comment();
         if (comment_expect) {
-            new_nodes.add_insert('comment', comment_expect);
+            this.nodes.add_insert('comment', comment_expect);
             return this.parse_action(true);
         }
         return this.parse_action(false);
     }
-    parse_tag_open(new_nodes) {
+    parse_tag_open() {
         let tag_expect = this.expect_tag_open();
         if (tag_expect) {
             if (this.acc.length > 0) {
                 let text_node = new Node('text_node');
                 text_node.value = this.acc;
-                new_nodes.add_insert('text_node', text_node);
+                this.nodes.add_insert('text_node', text_node);
                 this.acc = '';   
             }
             for (let j = 0; j < tag_expect.length; j++) {
                 let tag_type = tag_expect[j].type.toLowerCase();
                 if (VOID_ELEMENTS.includes(tag_type) || (tag_type == 'text_node')) {
-                    new_nodes.add_insert(tag_expect[j].type, tag_expect[j]);
+                    this.nodes.add_insert(tag_expect[j].type, tag_expect[j]);
                 }
                 else {
-                    new_nodes.add_open(tag_expect[j].type, tag_expect[j]);
+                    this.nodes.add_open(tag_expect[j].type, tag_expect[j]);
                 }
             }
             return this.parse_action(true);
         }
         return this.parse_action(false);
     }
-    parse_tag_close(new_nodes) {
+    parse_tag_close() {
         let close_expect = this.expect_tag_close();
         if (close_expect) {
             if (this.acc.length > 0) {
                 let text_node = new Node('text_node');
                 text_node.value = this.acc;
-                new_nodes.add_insert('text_node', text_node);
+                this.nodes.add_insert('text_node', text_node);
                 this.acc = '';
             }
-            new_nodes.add_close(close_expect, close_expect);
+            this.nodes.add_close(close_expect, close_expect);
             return this.parse_action(true);
         }
         return this.parse_action(false);

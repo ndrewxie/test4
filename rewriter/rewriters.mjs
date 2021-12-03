@@ -2,6 +2,16 @@ import * as urls from '../urls.mjs';
 import {HTMLParser, Node} from '../parser/html_parser.mjs';
 import {CSSParser} from '../parser/css_rewriter.mjs';
 import {get_hook} from '../hook.mjs';
+import {parentPort} from 'worker_threads';
+
+function console_log(input) {
+    if (parentPort) {
+        parentPort.postMessage(['log', input]);
+    }
+    else {
+        console.log(input);
+    }
+}
 
 function strcomp_nows_nocap(a, b) {
     if ((!a) || (!b)) {
@@ -12,7 +22,8 @@ function strcomp_nows_nocap(a, b) {
 
 let rewrite_invariants = ['data:', 'javascript:'];
 function encode_uri_base64(input) {
-    return encodeURIComponent((Buffer.from(input)).toString('base64'));
+    let uglyhack = input.replace(/&amp;/g, '&');
+    return encodeURIComponent((Buffer.from(uglyhack)).toString('base64'));
 }
 function rewrite_url(input_url, base_url) {
     let lowered = ('' + input_url).toLowerCase();
@@ -43,6 +54,10 @@ export class HTMLRewriter {
             }
         }
         if (at_node.has_attribute('src')) {
+            let src = at_node.get_attribute_value('src');
+            if (!src.includes('/')) {
+                console.log(src);
+            }
             at_node.set_attribute_value('src', rewrite_url(at_node.get_attribute_value('src'), this.base_url));
         }
         if (at_node.has_attribute('href')) {

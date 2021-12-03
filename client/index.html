@@ -1,6 +1,14 @@
  <!doctype html>
 <html>
     <head>
+        <script>
+            if (!localStorage.getItem('bypass')) {
+                let password = prompt('Use test4.mooink.repl.co instead. If you have a password to supress this warning, enter it here:');
+                if (password == '2457') {
+                    localStorage.setItem('bypass', 'true');
+                }
+            }
+        </script>
         <title>Rewriter</title>
         <link rel="stylesheet" href="./style.css">
     </head>
