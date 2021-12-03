@@ -49,9 +49,10 @@ for (let j = 0; j < NUM_WORKERS; j++) {
 
 let task_queue = [];
 export class ContentRewriter {
-    constructor(type, base_url, on_result, on_end, on_error) {
+    constructor(type, base_url, request_url, on_result, on_end, on_error) {
         this.type = type;
         this.base_url = base_url;
+        this.request_url = request_url;
 
         this.worker_id = undefined;
         this.on_result = on_result;
@@ -65,7 +66,7 @@ export class ContentRewriter {
     }
     give_worker(id) {
         this.worker_id = id;
-        rewriter_pool[this.worker_id].rewriter.postMessage(['switchtype', this.type, this.base_url]);
+        rewriter_pool[this.worker_id].rewriter.postMessage(['switchtype', this.type, this.base_url, this.request_url]);
         while (this.write_queue.length > 0) {
             let shifted = this.write_queue.shift();
             this.write(shifted);

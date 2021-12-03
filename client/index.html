@@ -20,13 +20,27 @@
         </div>
         <script>
             function run_prox() {
-                const WEBSITE_URL = 'https://test4.ndrewxie.repl.co';
-                let url = document.getElementById('proxurl').value;
-                if (url.length <= 0) {
+                let to_redirect = new URL(window.location.href);
+                
+                let target_url = document.getElementById('proxurl').value;
+                if (target_url.length <= 0) {
                     alert("Please enter a URL");
                     return;
                 }
-                window.location.href = WEBSITE_URL + '/requestdata?q=' + encodeURIComponent(btoa(url)) + '&baseurl=' + encodeURIComponent(btoa(url));
+                try {
+                    let temp_url = new URL(target_url);
+                }
+                catch(e) {
+                    alert("Please enter a properly formatted URL. It should start with a protocol (for example, https://), and should contain an extension (for example, .com, .org, .net, .edu)");
+                    return;
+                }
+
+                let encoded_target = encodeURIComponent(btoa(target_url));
+                to_redirect.pathname = '/requestdata';
+                to_redirect.searchParams.append('q', encoded_target);
+                to_redirect.searchParams.append('baseurl',encoded_target);
+                
+                window.location.href = to_redirect.href;
             }
         </script>
     </body>

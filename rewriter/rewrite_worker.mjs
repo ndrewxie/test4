@@ -17,10 +17,10 @@ parentPort.on('message', message => {
     if ((message instanceof Array) && (message[0] == 'switchtype')) {
         type = message[1];
         if (message[1] == 'html') {
-            rewriter = new rewriters.HTMLRewriter(message[2]);
+            rewriter = new rewriters.HTMLRewriter(message[2], message[3]);
         }
         else if (message[1] == 'css') {
-            rewriter = new rewriters.CSSRewriter(message[2]);
+            rewriter = new rewriters.CSSRewriter(message[3]);
         }
         return;
     }

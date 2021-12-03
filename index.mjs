@@ -41,6 +41,7 @@ function process_res(get_res, res, actual_request_url, base_url, options) {
         if (content_type) {
             res.setHeader('Content-Type', content_type);
         }
+        
         res.writeHead(get_res.statusCode);
         let transformer = undefined;
         let transformer_type = undefined;
@@ -55,7 +56,8 @@ function process_res(get_res, res, actual_request_url, base_url, options) {
             if (transformer_type) {
                 transformer = new ContentRewriter(
                     transformer_type, 
-                    (transformer_type == 'css') ? actual_request_url : base_url, 
+                    base_url,
+                    actual_request_url, 
                     function(chunk) { 
                         res.write(chunk); 
                     }, 

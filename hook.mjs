@@ -122,7 +122,6 @@ export const get_hook = base_url => `<script>
             args[0] = encode_url(args[0]);
         }
         else if (args[0] instanceof URL) {
-            alert("IS URL " + args[0].href);
             args[0] = encode_url(args[0].href);
         }
         return old_fetch(...args);

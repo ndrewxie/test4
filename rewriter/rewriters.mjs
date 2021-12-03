@@ -38,9 +38,10 @@ function rewrite_url(input_url, base_url) {
     return urls.WEBSITE_URL + '/requestdata?q=' + encode_uri_base64(input_url) + '&baseurl=' + encode_uri_base64(base_url);
 }
 export class HTMLRewriter {
-    constructor(base_url) {
+    constructor(base_url, request_url) {
         this.parser = new HTMLParser('');
         this.base_url = base_url;
+        this.request_url = request_url;
     }
     rewrite_node(at) {
         let at_node = at.info;
@@ -71,7 +72,7 @@ export class HTMLRewriter {
                 at_node.value = (at_node.value || '').toLowerCase().replace('game', '').replace('combat', '').replace('.io', '');
             }
             if (strcomp_nows_nocap(parent_node.type, 'style')) {
-                let base_url = this.base_url;
+                let base_url = this.request_url;
                 let rewriter = new CSSParser(at_node.value, function(url) {
                     return rewrite_url(url, base_url);
                 });
