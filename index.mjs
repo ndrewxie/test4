@@ -50,12 +50,12 @@ function process_res(get_res, res, actual_request_url, base_url, options) {
                 transformer_type = 'html';
             }
             else if (content_type_lower.includes('css')) {
-                //transformer_type = 'css';
+                transformer_type = 'css';
             }
             if (transformer_type) {
                 transformer = new ContentRewriter(
                     transformer_type, 
-                    base_url, 
+                    (transformer_type == 'css') ? actual_request_url : base_url, 
                     function(chunk) { 
                         res.write(chunk); 
                     }, 
