@@ -83,7 +83,7 @@ export class HTMLRewriter {
         let to_return = '';
         this.rewrite_node(at);
         to_return = at.info.get_open();
-        if (at.info.type.toLowerCase().includes('head')) {
+        if (strcomp_nows_nocap(at.info.type, 'head')) {
             to_return += get_hook(this.base_url);
         }
         return to_return;
