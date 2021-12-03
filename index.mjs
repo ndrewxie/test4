@@ -72,21 +72,10 @@ function process_res(get_res, res, actual_request_url, base_url, options) {
         }
         if (typeof transformer != 'undefined') {
             let id = transformer.worker_id;
-            let acc = '';
             get_res.on('data', chunk => {
-                if (transformer_type == 'html') {
-                    acc += chunk.toString();
-                }
                 transformer.write(chunk);
             });
             get_res.on('close', () => {
-                if ((transformer_type == 'html') && (acc.length > 10)) {
-                    fs.writeFile('log.html', acc, function(err) {
-                        if (err) {
-                            throw err;
-                        }
-                    });
-                }
                 transformer.end();
             });
         }
