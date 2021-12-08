@@ -1,4 +1,4 @@
-import * as urls from '../urls.mjs';
+import {urls} from '../urls.mjs';
 import {HTMLParser, Node} from '../parser/html_parser.mjs';
 import {CSSParser} from '../parser/css_rewriter.mjs';
 import {get_hook} from '../hook.mjs';
@@ -20,28 +20,10 @@ function strcomp_nows_nocap(a, b) {
     return a.trim().toLowerCase() == b.trim().toLowerCase();
 }
 
-let rewrite_invariants = ['data:', 'javascript:'];
-function encode_uri_base64(input) {
-    let uglyhack = input.replace(/&amp;/g, '&');
-    return encodeURIComponent((Buffer.from(uglyhack)).toString('base64'));
-}
-function rewrite_url(input_url, base_url) {
-    let lowered = ('' + input_url).toLowerCase();
-    for (let j = 0; j < rewrite_invariants.length; j++) {
-        if (lowered.startsWith(rewrite_invariants[j])) {
-            return input_url;
-        }
-    }
-    if (lowered.includes('imasdk.googleapis') || lowered.includes('googlesyndication')) {
-        return input_url;
-    }
-    return urls.WEBSITE_URL + '/requestdata?q=' + encode_uri_base64(input_url) + '&baseurl=' + encode_uri_base64(base_url);
-}
 export class HTMLRewriter {
-    constructor(base_url, request_url) {
+    constructor(requested_url) {
         this.parser = new HTMLParser('');
-        this.base_url = base_url;
-        this.request_url = request_url;
+        this.requested_url = requested_url;
     }
     rewrite_node(at) {
         let at_node = at.info;
@@ -56,13 +38,10 @@ export class HTMLRewriter {
         }
         if (at_node.has_attribute('src')) {
             let src = at_node.get_attribute_value('src');
-            if (!src.includes('/')) {
-                console.log(src);
-            }
-            at_node.set_attribute_value('src', rewrite_url(at_node.get_attribute_value('src'), this.base_url));
+            at_node.set_attribute_value('src', urls.rewrite_url(at_node.get_attribute_value('src')));
         }
         if (at_node.has_attribute('href')) {
-            at_node.set_attribute_value('href', rewrite_url(at_node.get_attribute_value('href'), this.base_url));
+            at_node.set_attribute_value('href', urls.rewrite_url(at_node.get_attribute_value('href')));
         }
         if (at_node.has_attribute('integrity')) {
             at_node.remove_attribute('integrity');
@@ -72,9 +51,8 @@ export class HTMLRewriter {
                 at_node.value = (at_node.value || '').toLowerCase().replace('game', '').replace('combat', '').replace('.io', '');
             }
             if (strcomp_nows_nocap(parent_node.type, 'style')) {
-                let base_url = this.request_url;
                 let rewriter = new CSSParser(at_node.value, function(url) {
-                    return rewrite_url(url, base_url);
+                    return urls.rewrite_url(url);
                 });
                 at_node.value = rewriter.rewrite();
             }
@@ -85,7 +63,7 @@ export class HTMLRewriter {
         this.rewrite_node(at);
         to_return = at.info.get_open();
         if (strcomp_nows_nocap(at.info.type, 'head')) {
-            to_return += get_hook(this.base_url);
+            to_return += get_hook(this.requested_url);
         }
         return to_return;
     }
@@ -124,17 +102,17 @@ export class HTMLRewriter {
     }
 }
 export class CSSRewriter {
-    constructor(base_url) {
-        this.base_url = base_url;
+    constructor(requested_url) {
+        this.requested_url = requested_url;
         this.acc = '';
     }
     write(input) {
         this.acc += input;
     }
     end() {
-        let base_url = this.base_url;
+        let requested_url = this.requested_url;
         let rewriter = new CSSParser(this.acc, function(url) {
-            return rewrite_url(url, base_url);
+            return urls.rewrite_url(url);
         });
         return rewriter.rewrite();
     }

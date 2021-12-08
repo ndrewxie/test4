@@ -1,6 +1,7 @@
-export const WEBSITE_BASE_URL = 'test4.ndrewxie.repl.co';
-export const WEBSITE_URL = 'https://' + WEBSITE_BASE_URL;
+import {readFileSync} from 'fs';
 
-export function is_rel_url() {
-    
+export const url_code = readFileSync('./common/url_internal.js').toString();
+export const urls = (new Function(url_code))();
+export function decode_base64_uri(input) {
+    return atob(decodeURIComponent(input));
 }

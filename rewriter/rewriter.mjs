@@ -1,8 +1,8 @@
 import {Worker} from 'worker_threads';
 
 let REWRITER_LINK = './rewriter/rewrite_worker.mjs';
-let NUM_WORKERS = 5;
-let MAX_WORKER_TIME = 100000;
+let NUM_WORKERS = 8;
+let MAX_WORKER_TIME = 45000;
 
 let rewriter_pool = [];
 function new_rewriter() {
@@ -35,7 +35,7 @@ function new_rewriter() {
         }
     });
     rewriter.on('error', e => {
-        console.log("WORKER ERROR: " + e);
+        console.log(e.message);
         if (curr_element.user && curr_element.user.on_error) {
             curr_element.user.on_error();
         }
@@ -49,9 +49,8 @@ for (let j = 0; j < NUM_WORKERS; j++) {
 
 let task_queue = [];
 export class ContentRewriter {
-    constructor(type, base_url, request_url, on_result, on_end, on_error) {
+    constructor(type, request_url, on_result, on_end, on_error) {
         this.type = type;
-        this.base_url = base_url;
         this.request_url = request_url;
 
         this.worker_id = undefined;
@@ -66,7 +65,7 @@ export class ContentRewriter {
     }
     give_worker(id) {
         this.worker_id = id;
-        rewriter_pool[this.worker_id].rewriter.postMessage(['switchtype', this.type, this.base_url, this.request_url]);
+        rewriter_pool[this.worker_id].rewriter.postMessage(['switchtype', this.type, this.request_url]);
         while (this.write_queue.length > 0) {
             let shifted = this.write_queue.shift();
             this.write(shifted);

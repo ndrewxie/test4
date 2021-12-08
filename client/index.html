@@ -2,10 +2,13 @@
 <html>
     <head>
         <script>
-            if (!localStorage.getItem('bypass')) {
+            if (
+                window.location.href.includes('ndrewxie') &&
+                (!localStorage.getItem('bypassprox2457'))
+            ) {
                 let password = prompt('Use test4.mooink.repl.co instead. If you have a password to supress this warning, enter it here:');
                 if (password == '2457') {
-                    localStorage.setItem('bypass', 'true');
+                    localStorage.setItem('bypassprox2457', 'true');
                 }
             }
         </script>
@@ -19,9 +22,11 @@
             <button id="runprox" onclick="run_prox()">Re-write</button>
         </div>
         <script>
-            function run_prox() {
-                let to_redirect = new URL(window.location.href);
-                
+            async function run_prox() {
+                let url_rewriter_res = await fetch('/common/url_internal.js');
+                let url_rewriter_text = await url_rewriter_res.text();
+                let url_rewriter = (new Function(url_rewriter_text))();
+
                 let target_url = document.getElementById('proxurl').value;
                 if (target_url.length <= 0) {
                     alert("Please enter a URL");
@@ -34,11 +39,7 @@
                     alert("Please enter a properly formatted URL. It should start with a protocol (for example, https://), and should contain an extension (for example, .com, .org, .net, .edu)");
                     return;
                 }
-
-                let encoded_target = encodeURIComponent(btoa(target_url));
-                to_redirect.pathname = '/requestdata';
-                to_redirect.searchParams.append('q', encoded_target);
-                to_redirect.searchParams.append('baseurl',encoded_target);
+                let to_redirect = new URL(url_rewriter.rewrite_url(target_url), window.location.href);
                 
                 window.location.href = to_redirect.href;
             }

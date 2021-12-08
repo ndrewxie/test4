@@ -1,26 +1,26 @@
-import * as urls from './urls.mjs';
-export const get_hook = base_url => `<script>
+import {url_code, urls} from './urls.mjs';
+
+export const get_hook = requested_url => `<script>
 (function() {
     if (window.proxy_hook_nonce) {
         return;
     }
     window.proxy_hook_nonce = true;
-    function encode_url(input_url) {
-        let rewrite_invariants = ['data:', 'javascript:'];
-        let lowered = ('' + input_url).toLowerCase();
-        for (let j = 0; j < rewrite_invariants.length; j++) {
-            if (lowered.startsWith(rewrite_invariants[j])) {
-                return input_url;           
-            }
-        }
-        if (lowered.includes('imasdk.googleapis') || lowered.includes('googlesyndication')) {
+    
+    let url_code_exports = (new Function(\`${url_code}\`))();
+    let encode_url = function(input_url) {
+        if (!input_url) {
             return input_url;
         }
-        if (encodeURIComponent(btoa(input_url)).includes('mFtcDtzPWUyMDc0ODk4ZTVmYmYwMThkZTIwMjU1MjUyNmZlMWZlZGFmYWMxMjY')) {
-            alert(input_url);
-        }
-        return '${urls.WEBSITE_URL}' + '/requestdata?q=' + encodeURIComponent(btoa(input_url)) + '&baseurl=' + encodeURIComponent(btoa('${base_url}'));
+        return url_code_exports.rewrite_url(input_url);
     }
+    let decode_url = function(input_url) {
+        if (!input_url) {
+            return input_url;
+        }
+        return url_code_exports.literal_decode_url(input_url);
+    }
+
     window.XMLHttpRequest.prototype.old_open = window.XMLHttpRequest.prototype.open;
     window.XMLHttpRequest.prototype.open = function() {
         let args = arguments;
@@ -30,59 +30,86 @@ export const get_hook = base_url => `<script>
         return this.old_open(...args);
     }
 
-    let proxy_list = [
-        [window.Image, ['src']],
-        [window.HTMLImageElement, ['src', 'href']],
-        [window.HTMLVideoElement, ['src']],
-        [window.HTMLScriptElement, ['src']],
-        [window.Image, ['src']],
-        [window.HTMLLinkElement, ['href']],
-        [window.HTMLAnchorElement, ['href']],
-        [window.HTMLIFrameElement, ['src']]
+    let attributes = ['href', 'src'];
+    let special_proxy_targets = [
+        [window.HTMLScriptElement, ['src']]
     ];
-    for (let j = 0; j < proxy_list.length; j++) {
-        let target = proxy_list[j][0];
-        let attributes = proxy_list[j][1];
-        if (!target.prototype.old_set_attribute) {
-            target.prototype.old_set_attribute = target.prototype.setAttribute;
-            target.prototype.setAttribute = function() {
+    let window_keys = Object.getOwnPropertyNames(window);
+    for (let j = 0; j < window_keys.length; j++) {
+        let current_node = window[window_keys[j]];
+        if (!current_node) { continue; }
+        current_node = current_node.prototype;
+
+        let should_rewrite = false;
+        let rewrite_attr_list = attributes;
+
+        for (let k = 0; k < special_proxy_targets.length; k++) {
+            if (special_proxy_targets[k][0].prototype == current_node) {
+                rewrite_attr_list = special_proxy_targets[k][1];
+                should_rewrite = true;
+                break;
+            }
+        }
+
+        if (!should_rewrite) {
+            while (current_node) {
+                current_node = Object.getPrototypeOf(current_node);
+                if (current_node == window.Element.prototype) {
+                    should_rewrite = true;
+                    break;
+                }
+            }
+            current_node = window[window_keys[j]].prototype;
+        }
+        if (!(should_rewrite && current_node)) {
+            continue;
+        }
+        
+        if (!current_node.old_set_attribute) {
+            current_node.old_set_attribute = current_node.setAttribute;
+            current_node.setAttribute = function() {
                 let args = arguments;
-                for (let k = 0; k < attributes.length; k++) {
-                    if (args[0].toLowerCase() == attributes[k].toLowerCase()) {
+                for (let k = 0; k < rewrite_attr_list.length; k++) {
+                    if (args[0].toLowerCase() == rewrite_attr_list[k].toLowerCase()) {
                         args[1] = encode_url(args[1]);
                         break;
                     }
                 }
                 this.old_set_attribute(...args);
             }
-            for (let k = 0; k < attributes.length; k++) {
-                Object.defineProperty(target.prototype, attributes[k], {
-                    set: function(input) {
-                        this.old_set_attribute(attributes[k], encode_url(input));
+        }
+        if (!current_node.old_get_attribute) {
+            current_node.old_get_attribute = current_node.getAttribute;
+            current_node.getAttribute = function() {
+                let to_return = this.old_get_attribute(...arguments);
+                for (let k = 0; k < rewrite_attr_list.length; k++) {
+                    if (arguments[0].toLowerCase() == rewrite_attr_list[k].toLowerCase()) {
+                        return decode_url(to_return);
                     }
-                });
+                }
+                return to_return;
             }
+        }
+
+        for (let k = 0; k < rewrite_attr_list.length; k++) {
+            Object.defineProperty(current_node, rewrite_attr_list[k], {
+                set: function(input) {
+                    this.old_set_attribute(rewrite_attr_list[k], encode_url(input));
+                },
+                get: function() {
+                    return this.old_get_attribute(rewrite_attr_list[k]);
+                },
+                configurable: true
+            });
         }
     }
 
     let old_websocket = window.WebSocket;
     window.WebSocket = function() {
         let args = arguments;
-        args[0] = 'wss://${urls.WEBSITE_BASE_URL}?url=' + encodeURIComponent(args[0]);
+        args[0] = 'wss://${urls.WEBSITE_BASE_URL}/?url=' + encodeURIComponent(args[0]);
         return new old_websocket(...args);
     }
-
-    /*
-    let old_request = window.Request;
-    window.Request = function() {
-        let args = arguments;
-        if (typeof args[0] === 'string' || args[0] instanceof String) {
-            alert(args[0]);
-            args[0] = encode_url(args[0]);
-        }
-        return new old_request(...args);
-    }
-    */
 
     window.navigator.serviceWorker.old_sw_register = window.navigator.serviceWorker.register;
     window.navigator.serviceWorker.register = function() {

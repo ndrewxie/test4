@@ -120,7 +120,12 @@ export class Node {
             }
             acc += ' ';
         }
-        acc += '>';
+        if (this.is_self_closing) {
+            acc += '/>';
+        }
+        else {
+            acc += '>';
+        }
         return acc;
     }
     get_close() {
@@ -347,7 +352,7 @@ export class HTMLParser {
             }
             for (let j = 0; j < tag_expect.length; j++) {
                 let tag_type = tag_expect[j].type.toLowerCase();
-                if (VOID_ELEMENTS.includes(tag_type) || (tag_type == 'text_node')) {
+                if (tag_expect[j].is_self_closing || (tag_type == 'text_node')) {
                     this.nodes.add_insert(tag_expect[j].type, tag_expect[j]);
                 }
                 else {
